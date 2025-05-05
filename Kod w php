@@ -1,0 +1,211 @@
+<?php
+// Połączenie z bazą danych
+$servername = "127.0.0.1";
+$username = "s226";
+$password = "ask9D9ame8en";
+$dbname = "dbs226";
+
+$conn = new mysqli($servername, $username, $password, $dbname);
+
+if ($conn->connect_error) {
+    die("Połączenie nieudane: " . $conn->connect_error);
+}
+
+function displayTable($query, $headers) {
+    global $conn;
+    $result = $conn->query($query);
+    if ($result->num_rows > 0) {
+        echo '<table>';
+        echo '<thead><tr>';
+        foreach ($headers as $header) {
+            echo '<th style="color: black;">' . $header . '</th>';
+        }
+        echo '</tr></thead><tbody>';
+        while ($row = $result->fetch_assoc()) {
+            echo '<tr>';
+            foreach ($row as $column) {
+                echo '<td>' . $column . '</td>';
+            }
+            echo '</tr>';
+        }
+        echo '</tbody></table>';
+    } else {
+        echo 'Brak danych do wyświetlenia.';
+    }
+}
+?>
+
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Restauracja</title>
+    <style>
+        body {
+            background-color: #222;
+            color: white;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        header {
+            background-color: #e53935;
+            color: white;
+            text-align: center;
+            padding: 10px;
+            font-size: 30px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 100;
+        }
+
+        footer {
+            background-color: #e53935;
+            color: white;
+            text-align: center;
+            padding: 10px;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+        }
+
+        nav {
+            width: 200px;
+            height: 100%;
+            background-color: #333;
+            position: fixed;
+            top: 60px;
+            left: 0;
+            padding-top: 20px;
+            color: white;
+            font-size: 18px;
+        }
+
+        nav a {
+            display: block;
+            padding: 10px;
+            text-decoration: none;
+            color: white;
+        }
+
+        nav a:hover {
+            background-color: #666;
+        }
+
+        .main-content {
+            margin-left: 220px;
+            padding: 20px;
+            padding-top: 60px;
+        }
+
+        h2 {
+            color: white;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background-color: white;
+        }
+
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f4f4f4;
+            color: black;
+        }
+
+        td {
+            background-color: #fafafa;
+            color: black;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    Restauracja
+</header>
+
+<nav>
+    <a href="?page=home">Strona Główna</a>
+    <a href="?page=menu">Menu</a>
+    <a href="?page=klienci">Klienci</a>
+    <a href="?page=zamowienia">Zamówienia</a>
+    <a href="?page=zestawienie">Zestawienie zamówień w kategorii</a>
+    <a href="?page=najlepszy_klient">Najlepszy klient</a>
+</nav>
+
+<div class="main-content">
+    <?php
+    if (isset($_GET['page'])) {
+        $page = $_GET['page'];
+
+        switch ($page) {
+            case 'home':
+                echo '<h2>Witamy w naszej restauracji</h2>';
+                break;
+            case 'menu':
+                echo '<h2>Menu</h2>';
+                $headers = ['LP', 'Nazwa produktu', 'Cena', 'Kategoria'];
+                displayTable("SELECT * FROM rest_menu", $headers);
+                break;
+            case 'klienci':
+                echo '<h2>Klienci</h2>';
+                $headers = ['LP', 'Imię', 'Nazwisko', 'Numer telefonu'];
+                displayTable("SELECT * FROM rest_klienci", $headers);
+                break;
+            case 'zamowienia':
+                echo '<h2>Zamówienia</h2>';
+                $headers = ['LP', 'ID klienta', 'ID pozycji', 'Data zamówienia', 'Ilość'];
+                displayTable("SELECT * FROM rest_zamowienia", $headers);
+                break;
+            case 'zestawienie':
+                echo '<h2>Zestawienie zamówień w kategorii</h2>';
+                $headers = ['Kategoria', 'Ilość sprzedana'];
+                displayTable("SELECT rest_menu.kategoria, SUM(rest_zamowienia.ilosc) AS ilosc_sprzedana 
+                              FROM rest_zamowienia 
+                              JOIN rest_menu ON rest_zamowienia.id_pozycja = rest_menu.id_pozycja
+                              GROUP BY rest_menu.kategoria", $headers);
+                break;
+            case 'najlepszy_klient':
+                echo '<h2>Najlepszy klient</h2>';
+                $headers = ['Imię', 'Nazwisko', 'Wydane pieniądze'];
+                displayTable("SELECT rest_klienci.imie, rest_klienci.nazwisko, SUM(rest_menu.cena * rest_zamowienia.ilosc) AS wydane_pieniadze
+                              FROM rest_zamowienia
+                              JOIN rest_klienci ON rest_zamowienia.id_klient = rest_klienci.id_klient
+                              JOIN rest_menu ON rest_zamowienia.id_pozycja = rest_menu.id_pozycja
+                              GROUP BY rest_klienci.id_klient
+                              ORDER BY wydane_pieniadze DESC LIMIT 1", $headers);
+                break;
+            default:
+                echo '<h2>Witamy w naszej restauracji</h2>';
+        }
+    } else {
+        echo '<h2>Witamy w naszej restauracji</h2>';
+    }
+    ?>
+</div>
+
+<footer>
+    Autor: Agata Kulesza
+</footer>
+
+</body>
+</html>
+
+<?php
+$conn->close();
+?>
